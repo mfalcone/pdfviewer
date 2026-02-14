@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PSD Book Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            max-width: 1400px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            border: none;
+            padding: 14px 35px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(30, 60, 114, 0.4);
+            min-width: 150px;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 60, 114, 0.6);
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .page-info {
+            text-align: center;
+            font-size: 1.3rem;
+            color: #333;
+            font-weight: 700;
+            min-width: 200px;
+        }
+
+        .book-viewer {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 30px;
+            min-height: 600px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            position: relative;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .page-container {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            justify-content: center;
+            max-width: 100%;
+        }
+
+        .page {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            max-height: 80vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .page.single {
+            max-width: 40%;
+        }
+
+        .page.double {
+            max-width: 30%;
+        }
+
+        .page img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            color: #fff;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #fff;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error {
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            border: 2px solid #ff6b6b;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f4f8;
+            border-left: 4px solid #1e3c72;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            color: #555;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .keyboard-hint {
+            font-size: 0.85rem;
+            color: #666;
+            font-style: italic;
+        }
+
+        .page-numbers {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+            display: flex;
+            gap: 40px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="controls">
+            <button class="btn" id="prevBtn" onclick="navigate(-1)">⬅️ Anterior</button>
+            <div class="page-info" id="pageInfo">Cargando...</div>
+            <button class="btn" id="nextBtn" onclick="navigate(1)">Siguiente ➡️</button>
+        </div>
+
+        <div class="book-viewer" id="bookViewer">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Cargando libro...</p>
+            </div>
+        </div>
+
+        <div class="info">
+            <div>
+                <strong>📚 Páginas actuales:</strong> <span id="currentPages">-</span>
+            </div>
+            <div class="keyboard-hint">
+                💡 Usa las flechas ← → del teclado para navegar
+            </div>
+        </div>
+
+        <div class="actions"
+            style="margin-top: 30px; text-align: center; border-top: 1px solid #eee; padding-top: 20px; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+            <div style="display: flex; gap: 15px;">
+                <button class="btn" id="exportBtn" onclick="exportAll()"
+                    style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                    💾 Exportar todo a JPG
+                </button>
+                <button class="btn" id="exportPdfBtn" onclick="exportToPdf()"
+                    style="background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);">
+                    📄 Exportar a PDF
+                </button>
+            </div>
+            <p id="exportStatus" style="margin-top: 10px; font-size: 0.9rem; color: #666; display: none;">Preparando
+                descarga...</p>
+        </div>
+    </div>
+
+    <script>
+        // ... (existing variables)
+
+        async function exportToPdf() {
+            const btn = document.getElementById('exportPdfBtn');
+            const status = document.getElementById('exportStatus');
+
+            if (!confirm('Esto procesará todos los archivos PSD y generará un único archivo PDF. Puede tomar un tiempo. ¿Desea continuar?')) {
+                return;
+            }
+
+            try {
+                btn.disabled = true;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<div class="spinner" style="width: 20px; height: 20px; border-width: 2px; display: inline-block; vertical-align: middle; margin-right: 10px; margin-bottom: 0;"></div> Procesando...';
+                status.style.display = 'block';
+                status.textContent = 'Convirtiendo imágenes y generando PDF... Por favor espere.';
+
+                const response = await fetch('/api/export-pdf');
+
+                if (!response.ok) {
+                    throw new Error('Error en el servidor al exportar PDF');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'psd-export.pdf';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                status.textContent = '¡Descarga lista!';
+                setTimeout(() => {
+                    status.style.display = 'none';
+                }, 3000);
+
+            } catch (error) {
+                console.error('Error exportando PDF:', error);
+                alert('Hubo un error al exportar el PDF. Revisa la consola para más detalles.');
+                status.textContent = 'Error en la exportación.';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '📄 Exportar a PDF';
+            }
+        }
+
+        async function exportAll() {
+            const btn = document.getElementById('exportBtn');
+            const status = document.getElementById('exportStatus');
+
+            if (!confirm('Esto procesará todos los archivos PSD y los convertirá a JPG. Puede tomar un tiempo. ¿Desea continuar?')) {
+                return;
+            }
+
+            try {
+                btn.disabled = true;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<div class="spinner" style="width: 20px; height: 20px; border-width: 2px; display: inline-block; vertical-align: middle; margin-right: 10px; margin-bottom: 0;"></div> Procesando...';
+                status.style.display = 'block';
+                status.textContent = 'Convirtiendo imágenes y generando ZIP... Por favor espere.';
+
+                const response = await fetch('/api/export-all');
+
+                if (!response.ok) {
+                    throw new Error('Error en el servidor al exportar');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'psd-export.zip';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                status.textContent = '¡Descarga lista!';
+                setTimeout(() => {
+                    status.style.display = 'none';
+                }, 3000);
+
+            } catch (error) {
+                console.error('Error exportando:', error);
+                alert('Hubo un error al exportar los archivos. Revisa la consola para más detalles.');
+                status.textContent = 'Error en la exportación.';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '💾 Exportar todo a JPG';
+            }
+        }
+
+        let files = [];
+        let currentSpreadIndex = 0; // Índice de la "doble página" actual
+        let spreads = []; // Array de spreads: [[file1], [file2, file3], [file4, file5], ...]
+
+        // Crear spreads (agrupaciones de páginas)
+        function createSpreads(fileList) {
+            spreads = [];
+
+            if (fileList.length === 0) return;
+
+            // Primera página sola (portada)
+            spreads.push([fileList[0]]);
+
+            // Resto en pares
+            for (let i = 1; i < fileList.length; i += 2) {
+                if (i + 1 < fileList.length) {
+                    spreads.push([fileList[i], fileList[i + 1]]);
+                } else {
+                    // Última página sola si es impar
+                    spreads.push([fileList[i]]);
+                }
+            }
+        }
+
+        // Cargar lista de archivos al inicio
+        async function loadFileList() {
+            try {
+                const response = await fetch('/api/psd-list');
+                const data = await response.json();
+                files = data.files;
+
+                if (files.length > 0) {
+                    createSpreads(files);
+                    loadSpread(0);
+                } else {
+                    showError('No se encontraron archivos PSD numerados en la carpeta');
+                }
+            } catch (error) {
+                console.error('Error cargando lista:', error);
+                showError('Error al cargar la lista de archivos');
+            }
+        }
+
+        // Cargar un spread (una o dos páginas)
+        async function loadSpread(spreadIndex) {
+            const viewer = document.getElementById('bookViewer');
+            const pageInfo = document.getElementById('pageInfo');
+            const currentPages = document.getElementById('currentPages');
+
+            const spread = spreads[spreadIndex];
+
+            // Mostrar loading
+            viewer.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Cargando páginas...</p>
+                </div>
+            `;
+
+            try {
+                const pageContainer = document.createElement('div');
+                pageContainer.className = 'page-container';
+
+                // Cargar cada página del spread
+                for (const filename of spread) {
+                    const response = await fetch(`/api/psd-image?file=${encodeURIComponent(filename)}`);
+
+                    if (!response.ok) {
+                        throw new Error(`Error cargando ${filename}`);
+                    }
+
+                    const blob = await response.blob();
+                    const imageUrl = URL.createObjectURL(blob);
+
+                    const pageDiv = document.createElement('div');
+                    pageDiv.className = spread.length === 1 ? 'page single' : 'page double';
+                    pageDiv.innerHTML = `<img src="${imageUrl}" alt="${filename}">`;
+
+                    pageContainer.appendChild(pageDiv);
+                }
+
+                viewer.innerHTML = '';
+                viewer.appendChild(pageContainer);
+
+                // Actualizar info
+                const pageNumbers = spread.map(f => f.replace('.psd', '')).join(' - ');
+                pageInfo.textContent = `Spread ${spreadIndex + 1} / ${spreads.length}`;
+                currentPages.textContent = pageNumbers;
+
+                // Agregar números de página en el visor
+                const pageNumDiv = document.createElement('div');
+                pageNumDiv.className = 'page-numbers';
+                pageNumDiv.textContent = pageNumbers;
+                viewer.appendChild(pageNumDiv);
+
+                updateButtons();
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError(`Error al cargar las páginas: ${error.message}`);
+            }
+        }
+
+        // Navegar entre spreads
+        function navigate(direction) {
+            const newIndex = currentSpreadIndex + direction;
+
+            if (newIndex >= 0 && newIndex < spreads.length) {
+                currentSpreadIndex = newIndex;
+                loadSpread(currentSpreadIndex);
+            }
+        }
+
+        // Actualizar estado de botones
+        function updateButtons() {
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+
+            prevBtn.disabled = currentSpreadIndex === 0;
+            nextBtn.disabled = currentSpreadIndex === spreads.length - 1;
+        }
+
+        // Mostrar error
+        function showError(message) {
+            const viewer = document.getElementById('bookViewer');
+            viewer.innerHTML = `
+                <div class="error">
+                    <h3>❌ Error</h3>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        // Navegación con teclado
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') {
+                navigate(-1);
+            } else if (e.key === 'ArrowRight') {
+                navigate(1);
+            }
+        });
+
+        // Iniciar al cargar la página
+        loadFileList();
+    </script>
+</body>
+
+</html>
